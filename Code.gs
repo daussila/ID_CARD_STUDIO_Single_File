@@ -384,40 +384,6 @@ function getStudioSourceInfo(type) {
     schemaReady: true
   };
 }
-function setStudioWorksheet(type, sheetId, header) {
-  assertAppAccess_();
-  const current = studioContext_(type);
-  if (current.sheet.getSheetId() === Number(sheetId) && current.header === !!header) return getStudioSourceInfo(type);
-  const fields = [];
-  if (current.sheet.getSheetId() === Number(sheetId) && current.schema) {
-    const reverse = {
-      grade: 'class',
-      transport: 'transportation'
-    };
-    Object.keys(current.schema.core).forEach(key => fields.push({
-      type: reverse[key] || key,
-      columnIndex: current.schema.core[key]
-    }));
-    current.schema.writable.forEach(index => {
-      if (!fields.some(field => field.columnIndex === index)) fields.push({
-        type: 'text',
-        columnIndex: index
-      });
-    });
-  }
-  saveDesignMapping(type, {
-    sheetId: sheetId,
-    header: !!header,
-    fields: fields
-  });
-  return getStudioSourceInfo(type);
-}
-function saveStudioSchema(type, fields) {
-  assertAppAccess_();
-  return saveDesignMapping(type, {
-    fields: fields
-  });
-}
 
 // Record validation, identity, and shared CRUD
 
@@ -580,7 +546,6 @@ function literalCell_(value) {
   return text.startsWith('=') ? "'" + text : text;
 }
 
-// Shared photo lookup and storage
 
 /** File names are optional labels; UUID and Drive file ID provide identity. */
 function legacyPhotoName_(type, record) {
@@ -1167,31 +1132,6 @@ function extractFolderId(urlOrId) {
   return match ? match[1] : String(urlOrId).trim();
 }
 
-function connectStudioSpreadsheet_(type, url) {
-  const sheetId = extractSheetId(url);
-  if (!sheetId) throw new Error('Enter a spreadsheet URL or ID.');
-  SpreadsheetApp.openById(sheetId).getId();
-  getCampusProperties_().setProperty(studioKeys_(type).sheet, sheetId);
-  return []; // Reload into the new per-user, per-source browser scope.
-}
-
-/**
- * Saves the Spreadsheet ID when the user clicks Accept.
- */
-function setSpreadsheetUrl(url) {
-  assertAppAccess_();
-  return connectStudioSpreadsheet_('student', url);
-}
-
-function setStaffSpreadsheetUrl(url) {
-  assertAppAccess_();
-  return connectStudioSpreadsheet_('staff', url);
-}
-
-function setCustomSpreadsheetUrl(url) {
-  assertAppAccess_();
-  return connectStudioSpreadsheet_('custom', url);
-}
 
 /**
  * Saves the Photo Folder ID when the user clicks Accept.
@@ -1324,15 +1264,6 @@ function deleteCustomRecord(key) {
 }
 
 
-// Shared photo lookup and storage
-
-function studioPhoto_(type, key) {
-  const entry = getStudioPhotoManifest(type, [key])[0];
-  if (entry.status === 'failed') throw new Error(entry.error);
-  return entry.status === 'ready' ? getStudioPhotoFile(type, entry.fileId) : null;
-}
-
-
 // Studio photo API and missing-photo report
 
 function saveStudentPhoto(dataUrl, key) {
@@ -1342,10 +1273,6 @@ function saveStudentPhoto(dataUrl, key) {
   return result;
 }
 
-function getStudentPhoto(key) {
-  assertAppAccess_();
-  return studioPhoto_('student', key);
-}
 
 function getStudentPhotoManifest(keys) {
   assertAppAccess_();
@@ -1392,10 +1319,6 @@ function saveStaffPhoto(dataUrl, key) {
   return result;
 }
 
-function getStaffPhoto(key) {
-  assertAppAccess_();
-  return studioPhoto_('staff', key);
-}
 
 function saveCustomPhoto(dataUrl, key) {
   assertAppAccess_();
@@ -1403,12 +1326,6 @@ function saveCustomPhoto(dataUrl, key) {
   if (result && result.success) usageRecord_('photo', 'custom');
   return result;
 }
-
-function getCustomPhoto(key) {
-  assertAppAccess_();
-  return studioPhoto_('custom', key);
-}
-
 
 
 // Embedded templates are private server helpers, not client-callable endpoints.
@@ -1433,7 +1350,7 @@ function studioEmbeddedHtml_(name) {
     header {display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}
     h1 {margin:0;font-size:26px} h2 {font-size:17px;margin:0 0 12px}
     p {line-height:1.5;color:#526277;margin:8px 0}
-    a.home,button {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid #adbdcf;border-radius:6px;background:#f7f9fc;color:#243247;font:600 13px 'Segoe UI',Arial,sans-serif;text-decoration:none;cursor:pointer}
+    button {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid #adbdcf;border-radius:6px;background:#f7f9fc;color:#243247;font:600 13px 'Segoe UI',Arial,sans-serif;text-decoration:none;cursor:pointer}
     button.primary {background:#245bc1;color:white;border-color:#245bc1}
     button.danger {color:#b42318;border-color:#d9b0ac;background:#fff5f4}
     button:disabled {opacity:.55;cursor:wait}
@@ -1460,7 +1377,6 @@ function studioEmbeddedHtml_(name) {
     .studio-icon svg {width:42px;height:42px}
     .eyebrow,.panel-heading {font-size:11px;font-weight:700;letter-spacing:.09em;color:#667085}
     h1 {font-size:28px;margin-top:3px}header p {margin-bottom:0}
-    a.home {background:#17243b;color:#fff;border-color:#17243b;white-space:nowrap}
     .workspace {display:grid;grid-template-columns:minmax(300px,350px) minmax(0,1fr);gap:20px;align-items:start}
     .management {min-width:0}.panel-heading {margin:0 0 12px 4px}
     .grid {display:block}.grid section,details {padding:18px;margin-bottom:14px}
@@ -1473,7 +1389,7 @@ function studioEmbeddedHtml_(name) {
     .table-top {align-items:flex-start;flex-wrap:wrap}
     .table-top .row {flex:1 1 260px;justify-content:flex-end}
     table {min-width:460px}th {background:#edf2f8;font-weight:700}td {padding-top:14px;padding-bottom:14px}
-    button,a.home {min-height:38px;border-radius:8px}
+    button {min-height:38px;border-radius:8px}
     button.primary {background:#185adb;border-color:#185adb}
     button:hover:not(:disabled) {filter:brightness(.96)}
     #status {font-size:13px;border:1px solid #c9d9f1;border-radius:8px}
@@ -2849,9 +2765,6 @@ function renderEmptyCustomCard() {
     photoLoading: false,
     emptyPreview: true
   });
-}
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 function getCustomRecordsForReliability() {
   return records;
@@ -4941,15 +4854,7 @@ input[type=color].input {
   border-radius:11px;
   box-shadow:0 4px 12px rgba(16,42,86,.08)
 }
-.design-tabs-label {
-  padding-left:4px;
-  color:#405572;
-  font-size:10px;
-  font-weight:850;
-  letter-spacing:.05em;
-  text-transform:uppercase;
-  white-space:nowrap
-}
+
 .design-tabs {
   min-width:0;
   display:flex;
@@ -5503,9 +5408,9 @@ input[type=color].input {
 .designer-document-panel .design-tabs-wrap {display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0;border:0;background:#f8fafc;min-width:0;}
 .designer-document-panel .design-tabs {flex:1 1 0;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;}
 .designer-document-panel .design-tab {flex:0 0 auto;}
-.designer-document-panel .design-tabs-label {flex:0 0 auto;margin:0;white-space:nowrap;}
+
 .designer-history-actions .btn {min-height:38px;}
-@media(max-width:600px) {.designer-document-actions {padding:10px;gap:8px;} .designer-document-panel .design-tabs-wrap {padding:10px;} .designer-document-panel .design-tabs-label {font-size:10px;}}
+@media(max-width:600px) {.designer-document-actions {padding:10px;gap:8px;} .designer-document-panel .design-tabs-wrap {padding:10px;} }
 </style>
 
 <style id="simplified-designer-ui">
@@ -5982,6 +5887,59 @@ function filterDesignerElements(query) {
 .sidebar.right .font-size-choice::before {display:none!important;}
 .sidebar.right .font-size-choice:hover,.sidebar.right .font-size-choice:focus-visible {background:#d5e5fb;}
 </style>
+
+<style id="compact-preview-header">
+@media screen {
+  .designer-document-panel .design-tabs-wrap {
+    padding:6px 12px;
+    gap:8px;
+    align-items:center;
+  }
+  .designer-document-panel .side-tabs {
+    display:flex;
+    flex:0 0 auto;
+    width:auto;
+    gap:4px;
+    margin:0;
+    padding:2px;
+  }
+  .designer-document-panel .side-tab {
+    flex:0 0 auto;
+    min-height:30px;
+    padding:4px 10px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .workspace > .canvas-toolbar {
+    display:block;
+    box-sizing:border-box;
+    min-height:0;
+    width:100%;
+    padding:4px 12px;
+    margin:0 0 8px;
+  }
+  .canvas-toolbar .workspace-head {
+    width:100%;
+    max-width:none;
+    margin:0;
+    text-align:center;
+  }
+  .canvas-toolbar #sizeLabel {
+    display:block;
+    margin:0;
+    font-size:11px;
+    line-height:1.4;
+    text-align:center;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  @media(max-width:420px) {
+    .designer-document-panel .design-tabs-wrap {flex-wrap:wrap;}
+    .designer-document-panel .design-tabs {flex-basis:100%;}
+    .designer-document-panel .side-tabs {margin-left:auto;}
+  }
+}
+</style>
 </head>
 <body>
 <header class="topbar">
@@ -6101,7 +6059,10 @@ function filterDesignerElements(query) {
 </div>
 <div class="design-tabs-wrap">
 <div id="designTabs" class="design-tabs" role="tablist" aria-label="Open card designs"></div>
-<span class="design-tabs-label">Open Cards</span>
+<div class="side-tabs" aria-label="Card side">
+<button id="frontSideTab" class="side-tab active" type="button" onclick="switchCardSide('front')">Front Side</button>
+<button id="backSideTab" class="side-tab" type="button" onclick="switchCardSide('back')">Back Side</button>
+</div>
 </div>
 </div>
 <div class="canvas-toolbar">
@@ -6110,10 +6071,7 @@ function filterDesignerElements(query) {
 <span id="sizeLabel">
 </span>
 </div>
-<div class="side-tabs" aria-label="Card side">
-<button id="frontSideTab" class="side-tab active" type="button" onclick="switchCardSide('front')">Front Side</button>
-<button id="backSideTab" class="side-tab" type="button" onclick="switchCardSide('back')">Back Side</button>
-</div>
+
 </div>
 <div class="card-shell">
 <div id="designCard" class="design-card" onclick="clearSelection(event)">
@@ -6149,11 +6107,7 @@ function filterDesignerElements(query) {
 </div>
 <div id="signatureTools" hidden><button class="btn" type="button" onclick="chooseSignature(true)">Replace Signature</button><p class="hint">Upload signature artwork. A transparent PNG works well.</p></div>
 <div id="symbolTools" hidden><label class="label" for="symbolChoice">Choose a symbol</label><select id="symbolChoice" class="input" onchange="setSelectedSymbol(this.value)"><option value="★">★ Star</option><option value="☎">☎ Telephone</option><option value="✉">✉ Envelope</option><option value="⌂">⌂ Building</option><option value="●">● Circle</option><option value="✓">✓ Check</option><option value="→">→ Arrow</option><option value="ℹ">ℹ Information</option></select><p class="hint">Or enter your own symbol in the field above. Use the text tools for size and color.</p></div>
-<div id="elementColumnField" hidden>
-<select id="elementColumn" disabled>
-<option value="">Mapped later in Card Studio</option>
-</select>
-</div>
+
 </div>
 </div>
 <div id="transportRules" class="transport-help" hidden>
@@ -6839,16 +6793,6 @@ function addElement(type) {
   if (type === 'photo') loadCurrentPhoto();
   render();
   flashElementAlignment(m);
-}
-function normalized(value) {
-  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
-}
-function fillColumnSelect(select, type, currentValue) {
-  if (!select) return;
-  select.innerHTML = '<option value="">Mapped later in Card Studio</option>';
-  select.value = '';
-  select.disabled = true;
-  select.title = 'Spreadsheet columns are mapped after this design is selected in a Card Studio.';
 }
 function buildElementButtons(boxId, types) {
   const box = document.getElementById(boxId);
@@ -7657,9 +7601,7 @@ function syncInspector() {
   field.placeholder = m.type === 'schoolYear' ? 'Enter the academic year, e.g. 2026–2027' : hasEditableContent ? 'Enter the content to display' : 'Map this element later in the Card Studio';
   setVal('elementField', hasEditableContent ? m.text || '' : LABELS[m.type] || m.type);
   const noColumn = NON_COLUMN_ELEMENTS.includes(m.type);
-  document.getElementById('elementColumnField').hidden = true;
   if (noColumn) m.columnIndex = '';
-  fillColumnSelect(document.getElementById('elementColumn'), m.type, m.columnIndex);
   if (unlimited) {
     xInput.removeAttribute('min');
     xInput.removeAttribute('max');
@@ -7765,8 +7707,7 @@ function captureSelectedInspectorValues() {
   ensureElementSettings(m);
   const s = spec();
   const previousColumn = m.columnIndex;
-  const columnSelect = document.getElementById('elementColumn');
-  if (NON_COLUMN_ELEMENTS.includes(m.type)) m.columnIndex = '';else if (columnSelect && !columnSelect.disabled) m.columnIndex = val('elementColumn');
+  if (NON_COLUMN_ELEMENTS.includes(m.type)) m.columnIndex = '';
   if (['schoolYear', 'instructions', 'icon'].includes(m.type)) m.text = val('elementField');
   if (textElement(m.type)) {
     m.fontFamily = val('standardFont') || m.fontFamily;
@@ -10263,361 +10204,6 @@ window.addEventListener('beforeprint', fitPrintText);
 </script>
 `;
 
-    case 'Landing':
-      return `<!DOCTYPE html>
-<html>
-<head>
-<script>
-window.STUDIO_URL = <?!= JSON.stringify(webAppUrl) ?>;
-window.STUDIO_TYPE = <?!= JSON.stringify(studioType) ?>;
-window.STUDIO_SCOPE = <?!= JSON.stringify(clientScope) ?>;
-window.STUDIO_STORAGE = {
-  getItem: function (k) {
-    return localStorage.getItem(STUDIO_SCOPE + k);
-  },
-  setItem: function (k, v) {
-    localStorage.setItem(STUDIO_SCOPE + k, v);
-  },
-  removeItem: function (k) {
-    localStorage.removeItem(STUDIO_SCOPE + k);
-  }
-};
-</script>
-<base target="_top">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root {
-  --ink: #172033;
-  --muted: #667085;
-  --line: #dce3ec;
-  --student: #185adb;
-  --staff: #7141c6;
-  --custom: #0f8b8d;
-  --design: #e66a13;
-}
-* {
-  box-sizing: border-box;
-}
-body {
-  min-height: 100vh;
-  margin: 0;
-  padding: 28px;
-  font-family: "Segoe UI", Arial, sans-serif;
-  color: var(--ink);
-  background: radial-gradient(circle at 15% 15%, rgba(24,90,219,.12), transparent 28%), radial-gradient(circle at 85% 85%, rgba(113,65,198,.12), transparent 28%), #f4f7fb;
-}
-.portal {
-  width: 100%;
-  max-width: 1200px;
-  margin: 24px auto;
-}
-.portal-header {
-  margin-bottom: 28px;
-  text-align: center;
-}
-.portal-mark {
-  width: 82px;
-  height: 82px;
-  margin: 0 auto 15px;
-  padding: 8px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--student), var(--staff));
-  border-radius: 22px;
-  box-shadow: 0 12px 28px rgba(24,90,219,.22);
-  font-weight: 800;
-  transition: transform .18s ease;
-}
-.portal-mini {
-  min-width: 0;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,.45);
-  border-radius: 9px;
-  box-shadow: 0 3px 7px rgba(23,32,51,.2);
-}
-.portal-mini.student {
-  background: var(--student);
-}
-.portal-mini.staff {
-  background: var(--staff);
-}
-.portal-mini.custom {
-  background: var(--custom);
-}
-.portal-mini.design {
-  background: var(--design);
-}
-.portal-mini svg {
-  width: 28px;
-  height: 28px;
-  display: block;
-  filter: drop-shadow(0 2px 2px rgba(23,32,51,.18));
-}
-.portal-header:hover .portal-mark {
-  transform: translateY(-2px) scale(1.06);
-}
-h1 {
-  margin: 0;
-  font-size: clamp(25px, 4vw, 34px);
-}
-.portal-header p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 15px;
-}
-.choice-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-.choice-card {
-  min-height: 225px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  color: inherit;
-  text-decoration: none;
-  background: rgba(255,255,255,.96);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 12px 35px rgba(33,48,73,.09);
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-.choice-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 18px 42px rgba(33,48,73,.14);
-}
-.student-card:hover {
-  border-color: #9db9ee;
-}
-.staff-card:hover {
-  border-color: #c4afe7;
-}
-.custom-card:hover {
-  border-color: #8fd8d2;
-}
-.design-card:hover {
-  border-color: #f2bd8e;
-}
-.choice-icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  border-radius: 13px;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(23,32,51,.16);
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-.choice-card:hover .choice-icon {
-  transform: translateY(-2px) scale(1.08) rotate(-3deg);
-  box-shadow: 0 11px 24px rgba(23,32,51,.22);
-}
-.student-card .choice-icon {
-  background: var(--student);
-}
-.staff-card .choice-icon {
-  background: var(--staff);
-}
-.custom-card .choice-icon {
-  background: var(--custom);
-}
-.design-card .choice-icon {
-  background: var(--design);
-}
-.choice-icon svg {
-  width: 37px;
-  height: 37px;
-  display: block;
-  filter: drop-shadow(0 3px 4px rgba(23,32,51,.22));
-}
-.choice-card h2 {
-  margin: 18px 0 7px;
-  font-size: 21px;
-}
-.choice-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.55;
-  font-size: 14px;
-}
-.open-label {
-  margin-top: auto;
-  padding-top: 22px;
-  color: var(--student);
-  font-size: 13px;
-  font-weight: 800;
-}
-.staff-card .open-label {
-  color: var(--staff);
-}
-.custom-card .open-label {
-  color: var(--custom);
-}
-.design-card .open-label {
-  color: var(--design);
-}
-@media (max-width: 900px) {
-  .choice-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-@media (max-width: 650px) {
-  body {
-    padding: 18px;
-  }
-  .choice-grid {
-    grid-template-columns: 1fr;
-  }
-  .choice-card {
-    min-height: 195px;
-  }
-}
-</style>
-<style>
-.control-center-link {display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;padding:9px 14px;background:#243247;color:white;text-decoration:none;border-radius:7px;font-size:13px;font-weight:600;}
-.control-center-link:hover {background:#edf3ff;border-color:#9db9ee;}
-.control-center-link {gap:12px;padding:12px 16px;background:#f9fbfd;color:#172033;border:1px solid #dce3ec;border-radius:12px;text-align:left;box-shadow:0 5px 18px #24324709;}
-.control-center-link strong {display:block;font-size:15px;}
-.control-center-link small {display:block;margin-top:3px;font-size:12px;font-weight:400;color:#667085;}
-.admin-icon {display:grid;place-items:center;width:42px;height:42px;background:#185adb;border-radius:10px;}
-.admin-icon svg {width:32px;height:32px;}
-</style>
-</head>
-<body>
-<main class="portal">
-<header class="portal-header">
-<div class="portal-mark" role="img" aria-label="Student, Staff, Custom, and Design ID Card Studios">
-<span class="portal-mini student">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M12 41c1-8 5.5-12 12-12s11 4 12 12" fill="#38d0b4"/>
-<circle cx="24" cy="23" r="7" fill="#ffbf91"/>
-<path d="M7 15L24 7l17 8-17 8-17-8z" fill="#ffd34e"/>
-<path d="M14 19v5c5.5 4.8 14.5 4.8 20 0v-5" fill="#6f56d9"/>
-<path d="M40 16v9" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="40" cy="27" r="2" fill="#ff7a59"/>
-</svg>
-</span>
-<span class="portal-mini staff">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M10 42c.8-9 5.8-14 14-14s13.2 5 14 14" fill="#233c78"/>
-<path d="M19 29l5 6 5-6" fill="#fff"/>
-<path d="M23 34h2l2 8h-6l2-8z" fill="#ff5c70"/>
-<circle cx="24" cy="19" r="8" fill="#f2b88f"/>
-<path d="M16 18c.5-8 15-10 17-2-4-1-8-2-12-4-1 3-3 5-5 6z" fill="#51362b"/>
-<rect x="31" y="30" width="10" height="8" rx="2" fill="#ffd34e"/>
-</svg>
-</span>
-<span class="portal-mini custom">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<rect x="5" y="9" width="38" height="30" rx="6" fill="#fff"/>
-<circle cx="16" cy="23" r="6" fill="#9f7aea"/>
-<path d="M9 35c1-5.5 3.5-8 7-8s6 2.5 7 8" fill="#ff8a65"/>
-<rect x="26" y="17" width="11" height="3" rx="1.5" fill="#2563eb"/>
-<circle cx="37" cy="34" r="7" fill="#ffd34e"/>
-<path d="M37 30v8M33 34h8" stroke="#7b4f00" stroke-width="2.5" stroke-linecap="round"/>
-</svg>
-</span>
-<span class="portal-mini design">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M24 7C13 7 6 14.5 6 24s7.7 17 17 17h3c2.2 0 3.2-2.7 1.6-4.2-1.3-1.2-.5-3.4 1.3-3.4h5.6c5 0 7.5-3.7 7.5-8.4C42 14.7 34.2 7 24 7z" fill="#fff4d6"/>
-<circle cx="15" cy="20" r="3" fill="#ff5c70"/>
-<circle cx="22" cy="14" r="3" fill="#ffd34e"/>
-<circle cx="30" cy="16" r="3" fill="#38d0b4"/>
-<circle cx="34" cy="24" r="3" fill="#5b8cff"/>
-<path d="M17 38l15-18 5 4-15 18-6 1 1-5z" fill="#7141c6"/>
-</svg>
-</span>
-</div>
-<h1>ID Card Studio</h1>
-<p>Choose a studio to manage records and print cards, or open Design Studio to create a layout.</p>
-<? if (typeof isAdministrator !== 'undefined' && isAdministrator === true) { ?>
-<a class="control-center-link" href="<?= webAppUrl ?>?studio=control-center" target="_top"><span class="admin-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4 41 11v12c0 10-7 17-17 22C14 40 7 33 7 23V11Z" fill="#a9c8ff"/><path d="m16 24 6 6 12-13" fill="none" stroke="#185adb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><strong>Control Center</strong><small>Manage user access · Administrator only</small></span><span aria-hidden="true">→</span></a>
-<? } ?>
-</header>
-<section class="choice-grid" aria-label="Choose ID card type">
-<a class="choice-card student-card" href="<?!= webAppUrl ?>?screen=student-studio&amp;studio=student&amp;routeVersion=3" target="_top">
-<div class="choice-icon" role="img" aria-label="Student">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M12 41c1-8 5.5-12 12-12s11 4 12 12" fill="#38d0b4"/>
-<circle cx="24" cy="23" r="7" fill="#ffbf91"/>
-<path d="M7 15L24 7l17 8-17 8-17-8z" fill="#ffd34e"/>
-<path d="M14 19v5c5.5 4.8 14.5 4.8 20 0v-5" fill="#6f56d9"/>
-<path d="M40 16v9" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="40" cy="27" r="2" fill="#ff7a59"/>
-</svg>
-</div>
-<h2>Student ID Card</h2>
-<p>Connect student data, select a design, and map its columns. Find students by name, ID number, or grade; take photos and preview or print cards.</p>
-<span class="open-label">Open Student Studio →</span>
-</a>
-<a class="choice-card staff-card" href="<?!= webAppUrl ?>?screen=staff-studio&amp;studio=staff&amp;routeVersion=3" target="_top">
-<div class="choice-icon" role="img" aria-label="Staff">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M10 42c.8-9 5.8-14 14-14s13.2 5 14 14" fill="#233c78"/>
-<path d="M19 29l5 6 5-6" fill="#fff"/>
-<path d="M23 34h2l2 8h-6l2-8z" fill="#ff5c70"/>
-<circle cx="24" cy="19" r="8" fill="#f2b88f"/>
-<path d="M16 18c.5-8 15-10 17-2-4-1-8-2-12-4-1 3-3 5-5 6z" fill="#51362b"/>
-<rect x="31" y="30" width="10" height="8" rx="2" fill="#ffd34e"/>
-<circle cx="34" cy="33" r="1.5" fill="#7141c6"/>
-<path d="M37 33h2M34 36h5" stroke="#7141c6" stroke-width="1.3" stroke-linecap="round"/>
-</svg>
-</div>
-<h2>Staff ID Card</h2>
-<p>Connect staff data, select a design, and map its columns. Search by name, manage records and photos, and preview or print one or all staff cards.</p>
-<span class="open-label">Open Staff Studio →</span>
-</a>
-<a class="choice-card custom-card" href="<?!= webAppUrl ?>?screen=custom-studio&amp;studio=custom&amp;routeVersion=3" target="_top">
-<div class="choice-icon" role="img" aria-label="Custom ID card">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<rect x="5" y="9" width="38" height="30" rx="6" fill="#fff"/>
-<circle cx="16" cy="23" r="6" fill="#9f7aea"/>
-<path d="M9 35c1-5.5 3.5-8 7-8s6 2.5 7 8" fill="#ff8a65"/>
-<rect x="26" y="17" width="11" height="3" rx="1.5" fill="#2563eb"/>
-<rect x="26" y="23" width="9" height="3" rx="1.5" fill="#22b8a7"/>
-<circle cx="37" cy="34" r="7" fill="#ffd34e"/>
-<path d="M37 30v8M33 34h8" stroke="#7b4f00" stroke-width="2.5" stroke-linecap="round"/>
-</svg>
-</div>
-<h2>Custom ID Card</h2>
-<p>Connect a separate spreadsheet and photo folder. Map your chosen design, search and manage records, and preview or print custom cards.</p>
-<span class="open-label">Open Custom Studio →</span>
-</a>
-<a id="openDesignStudio" class="choice-card design-card" href="<?!= webAppUrl ?>?screen=card-designer-v3" target="_top">
-<div class="choice-icon" role="img" aria-label="Design">
-<svg viewBox="0 0 48 48" aria-hidden="true">
-<path d="M24 7C13 7 6 14.5 6 24s7.7 17 17 17h3c2.2 0 3.2-2.7 1.6-4.2-1.3-1.2-.5-3.4 1.3-3.4h5.6c5 0 7.5-3.7 7.5-8.4C42 14.7 34.2 7 24 7z" fill="#fff4d6"/>
-<circle cx="15" cy="20" r="3" fill="#ff5c70"/>
-<circle cx="22" cy="14" r="3" fill="#ffd34e"/>
-<circle cx="30" cy="16" r="3" fill="#38d0b4"/>
-<circle cx="34" cy="24" r="3" fill="#5b8cff"/>
-<path d="M17 38l15-18 5 4-15 18-6 1 1-5z" fill="#7141c6"/>
-<path d="M32 20l5 4" stroke="#fff" stroke-width="2"/>
-</svg>
-</div>
-<h2>Design Studio</h2>
-<p>Create front and back layouts, arrange visual and data elements, and save reusable design files. Link spreadsheet columns later in a Card Studio.</p>
-<span class="open-label">Open Design Studio →</span>
-</a>
-</section>
-<? if (typeof isAdministrator !== 'undefined' && isAdministrator === true) { ?>
-<p style="margin:20px 4px 0;color:#667085;font-size:12px;line-height:1.5;text-align:center">Usage reporting: administrators can see your account email, visit times, studio openings, photo-save counts, and print requests. Your record contents, photos, and source links are not included.</p>
-<? } ?>
-</main>
-<?!= include('ReliabilityClient'); ?>
-</body>
-</html>
-`;
-
     case 'ReliabilityClient':
       return `<style>
 .studio-reliability-bar {
@@ -12611,9 +12197,6 @@ function renderEmptyStaffCard() {
     emptyPreview: true
   });
 }
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
 function renderStaffCard(staff) {
   const mount = document.getElementById('cardMount');
   const requestToken = ++staffPreviewRequest;
@@ -13166,7 +12749,6 @@ window.addEventListener('message', function (event) {
   const popup = event.source;
   const dataUrl = event.data.dataUrl;
   const targetStaffId = cameraTargetStaffId;
-  const targetStaffName = cameraTargetStaffName;
   google.script.run.withSuccessHandler(function (result) {
     StudioReliability.invalidate();
     if (!result || !result.success) {
@@ -13188,15 +12770,6 @@ window.addEventListener('message', function (event) {
           photoData: dataUrl
         });
       }
-      const image = document.getElementById('staffPhoto');
-      const placeholder = document.getElementById('staffPhotoPlaceholder');
-      const frame = document.getElementById('staffPhotoFrame');
-      if (image) {
-        image.src = dataUrl;
-        image.hidden = false;
-      }
-      if (placeholder) placeholder.hidden = true;
-      if (frame) frame.style.border = 'none';
     }
     if (popup && !popup.closed) popup.postMessage({
       type: 'STAFF_PHOTO_RESULT',
@@ -14434,7 +14007,7 @@ function syncStudentPrintList() {
 }
 function studentPrintListCard(person, mount, container) {
   const group = document.createElement('div');
-  group.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:8px';
+  group.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px';
   const button = document.createElement('button');
   const key = String(person.recordKey || '');
   button.type = 'button'; button.className = 'btn-action student-print-list-add';
@@ -16459,7 +16032,6 @@ window.addEventListener('DOMContentLoaded', function () {
 </body>
 </html>
 `;
-
     default:
       throw new Error('Unknown embedded template.');
   }
