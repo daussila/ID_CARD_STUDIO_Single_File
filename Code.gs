@@ -15867,7 +15867,7 @@ window.addEventListener('DOMContentLoaded', function () {
 </head>
 <body>
   <header class="app-header">
-    <div class="heading"><span class="mark" aria-hidden="true">▣</span><div><h1>ID Card Studio</h1><p class="hint">Switch studios using the tabs. Your open work stays in place.</p></div></div>
+    <div class="heading"><span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" focusable="false" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="3" width="20" height="26" rx="3" fill="white"/><rect x="12" y="5" width="8" height="2.5" rx="1.25" fill="#185adb"/><circle cx="12" cy="13" r="2.5" fill="#185adb"/><path d="M8.5 20v-1a3.5 3.5 0 0 1 7 0v1Z" fill="#185adb"/><path d="M18.5 12.5h4M18.5 16.5h4M9.5 24h13" fill="none" stroke="#185adb" stroke-width="1.8" stroke-linecap="round"/></svg></span><div><h1>ID Card Studio</h1><p class="hint">Switch studios using the tabs. Your open work stays in place.</p></div></div>
     <nav class="tabs" role="tablist" aria-label="ID card studios" id="studioTabs">
       <button id="tab-student" role="tab" type="button" data-studio="student" aria-controls="panel-student" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 8 10-5 10 5-10 5Z M6 10v5q6 5 12 0v-5 M22 8v8"/></svg>Student</button>
       <button id="tab-staff" role="tab" type="button" data-studio="staff" aria-controls="panel-staff" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3 M9 15l3 4 3-4"/></svg>Staff</button>
